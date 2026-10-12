@@ -1,0 +1,50 @@
+name: SonarQube Cloud - Analisis estatico
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sonarqube:
+    name: Build y analisis SonarQube Cloud (WebGoat - Java/Maven)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout del codigo (historial completo para blame)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar JDK 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: 25
+          distribution: temurin
+          cache: maven
+
+      - name: Cache de paquetes de SonarQube Cloud
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Compilar y analizar con Maven + SonarScanner
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          ./mvnw -B --no-transfer-progress
+          -DskipTests -Dspotless.check.skip=true
+          verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.organization=mvarelam1-hub
+          -Dsonar.projectKey=mvarelam1-hub_WebGoat
+          -Dsonar.projectName=WebGoat
